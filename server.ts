@@ -6,13 +6,8 @@ import { createServer as createViteServer } from "vite";
 import { webcrypto } from "crypto";
 import { createServer as createHttpServer } from "http";
 import cookieParser from "cookie-parser";
-import { connectDB } from "./src/config/db.ts";
 import { pageVerifyJWT } from "./src/middleware/auth.ts";
-import authRoutes from "./src/routes/authRoutes.ts";
-import phoneRoutes from "./src/routes/phoneRoutes.ts";
 import passwordRoutes from "./src/routes/passwordRoutes.ts";
-import passport from "passport";
-import { configurePassport } from "./src/config/passport.ts";
 
 const app = express();
 const PORT = 3000;
@@ -260,16 +255,6 @@ app.use(cors({
 // Body parser for JSON payloads (encrypted chat messages and attachments)
 app.use(express.json({ limit: "20mb" }));
 app.use(cookieParser());
-
-// Initialize Passport.js middleware
-app.use(passport.initialize());
-configurePassport();
-
-// Authentication API Router
-app.use("/api/auth", authRoutes);
-
-// Phone Intelligence API Router
-app.use("/api/phone", phoneRoutes);
 
 // Password Security Analyzer API Router
 app.use("/api/password", passwordRoutes);
@@ -688,9 +673,6 @@ app.get("/api/cyber-news", async (req, res) => {
 
 // App server listening and middleware assembly
 async function bootstrapServer() {
-  // Connect to User Database (MongoDB or Secure local persistent storage)
-  await connectDB();
-
   // Initialize E2E Support Cryptographic keys
   await initSupportKeys();
 

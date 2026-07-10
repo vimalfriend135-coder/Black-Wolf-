@@ -8,7 +8,8 @@ import {
   GoogleAuthProvider, 
   GithubAuthProvider,
   onAuthStateChanged,
-  signOut
+  signOut,
+  updateProfile
 } from "firebase/auth";
 
 const firebaseConfig = {
@@ -34,5 +35,6 @@ export {
   GoogleAuthProvider,
   GithubAuthProvider,
   onAuthStateChanged,
-  signOut
+  signOut,
+  updateProfile
 };

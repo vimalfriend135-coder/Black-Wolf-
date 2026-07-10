@@ -5,9 +5,8 @@
 
 import { fetchCyberNews, escapeHTML } from "./news-api.js";
 import jsQR from "jsqr";
-import { initPhoneIntelligence } from "./phone-intelligence.js";
 import { initPasswordAnalyzer } from "./password-analyzer.js";
-import { auth, signOut } from "./firebase-init.js";
+import { auth, signOut, onAuthStateChanged } from "./firebase-init.js";
 
 document.addEventListener('DOMContentLoaded', () => {
   
@@ -28,59 +27,66 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // --- FETCH ACTIVE USER SESSION ---
-  async function fetchActiveSession() {
-    try {
-      const response = await fetch('/api/auth/me');
-      const result = await response.json();
-      if (result.success && result.user) {
-        // Load custom profile details if stored
-        const storedProfile = localStorage.getItem('operatorProfile');
-        let displayName = result.user.username;
-        let displayCallsign = result.user.username.toUpperCase();
-        let displayDept = 'SOC Operations Center';
-        let displayClearance = 'Level 2 - Restricted File Clearance';
-
-        if (storedProfile) {
-          try {
-            const profile = JSON.parse(storedProfile);
-            if (profile.name) displayName = profile.name;
-            if (profile.codename) displayCallsign = profile.codename;
-            if (profile.department) displayDept = profile.department;
-            if (profile.clearance) {
-              if (profile.clearance === 'LEVEL_4_ADMIN') displayClearance = 'Level 4 - Top Secret Root Control';
-              else if (profile.clearance === 'LEVEL_3_ANALYST') displayClearance = 'Level 3 - Secret Incident Log Access';
-              else if (profile.clearance === 'LEVEL_2_SPECIALIST') displayClearance = 'Level 2 - Restricted File Clearance';
-              else displayClearance = 'Level 1 - Public Console Access';
-            }
-          } catch (pe) {
-            console.error("Parse storedProfile failed:", pe);
-          }
-        }
-
-        consoleState.user = displayName;
-        const userNameEls = document.querySelectorAll('.user-name');
-        userNameEls.forEach(el => el.textContent = displayName);
-        
-        const welcomeTitle = document.getElementById('typing-welcome');
-        if (welcomeTitle) {
-          welcomeTitle.textContent = `AUTHENTICATION CONFIRMED: WELCOME ${displayName.toUpperCase()} TO SECURITY OPERATIONS CENTER`;
-        }
-
-        // Dynamically update the summary operator card info
-        const summaryName = document.getElementById('summary-operator-name');
-        const summaryDept = document.getElementById('summary-operator-dept');
-        const summaryClearance = document.getElementById('summary-operator-clearance');
-
-        if (summaryName) summaryName.textContent = displayName;
-        if (summaryDept) summaryDept.textContent = `Rank/Dept: ${displayDept} (${displayCallsign})`;
-        if (summaryClearance) summaryClearance.textContent = `Clearance Level: ${displayClearance}`;
+  function monitorActiveSession() {
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        console.log("No active Firebase session. Redirecting to login page.");
+        window.location.href = '/';
+        return;
       }
-    } catch (err) {
-      console.error("Session verification failure:", err);
-    }
+
+      const username = user.displayName || user.email.split('@')[0];
+      window.currentUserSession = {
+        username: username,
+        email: user.email,
+        role: 'operator'
+      };
+
+      // Load custom profile details if stored
+      const storedProfile = localStorage.getItem('operatorProfile');
+      let displayName = username;
+      let displayCallsign = username.toUpperCase();
+      let displayDept = 'SOC Operations Center';
+      let displayClearance = 'Level 2 - Restricted File Clearance';
+
+      if (storedProfile) {
+        try {
+          const profile = JSON.parse(storedProfile);
+          if (profile.name) displayName = profile.name;
+          if (profile.codename) displayCallsign = profile.codename;
+          if (profile.department) displayDept = profile.department;
+          if (profile.clearance) {
+            if (profile.clearance === 'LEVEL_4_ADMIN') displayClearance = 'Level 4 - Top Secret Root Control';
+            else if (profile.clearance === 'LEVEL_3_ANALYST') displayClearance = 'Level 3 - Secret Incident Log Access';
+            else if (profile.clearance === 'LEVEL_2_SPECIALIST') displayClearance = 'Level 2 - Restricted File Clearance';
+            else displayClearance = 'Level 1 - Public Console Access';
+          }
+        } catch (pe) {
+          console.error("Parse storedProfile failed:", pe);
+        }
+      }
+
+      consoleState.user = displayName;
+      const userNameEls = document.querySelectorAll('.user-name');
+      userNameEls.forEach(el => el.textContent = displayName);
+      
+      const welcomeTitle = document.getElementById('typing-welcome');
+      if (welcomeTitle) {
+        welcomeTitle.textContent = `AUTHENTICATION CONFIRMED: WELCOME ${displayName.toUpperCase()} TO SECURITY OPERATIONS CENTER`;
+      }
+
+      // Dynamically update the summary operator card info
+      const summaryName = document.getElementById('summary-operator-name');
+      const summaryDept = document.getElementById('summary-operator-dept');
+      const summaryClearance = document.getElementById('summary-operator-clearance');
+
+      if (summaryName) summaryName.textContent = displayName;
+      if (summaryDept) summaryDept.textContent = `Rank/Dept: ${displayDept} (${displayCallsign})`;
+      if (summaryClearance) summaryClearance.textContent = `Clearance Level: ${displayClearance}`;
+    });
   }
 
-  fetchActiveSession();
+  monitorActiveSession();
 
   let mapInterval = null;
 
@@ -115,9 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSidebarCodeBars();
   initQRChecker();
   initEmailSafetyChecker();
-  initPhoneIntelligence();
   initPasswordAnalyzer();
-  initCommunityForum();
   initSupportConsole();
   initFeedbackConsole();
   initCyberFabSheet();
@@ -359,14 +363,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Bottom Navigation Bar button clicks
     bottomNavItems.forEach(bItem => {
-      bItem.addEventListener('click', () => {
+      bItem.addEventListener('click', (e) => {
         const target = bItem.getAttribute('data-nav-target');
+        if (target === 'settings') {
+          // Open Operator Profile Setup instead
+          e.preventDefault();
+          e.stopPropagation();
+          showToast('PROFILE ROUTE', 'Opening Operator Profile configuration...');
+          setTimeout(() => {
+            window.location.href = '/personal-details.html';
+          }, 600);
+          return;
+        }
         const correspondingMenuItem = document.querySelector(`.menu-item[data-target="${target}"]`);
         if (correspondingMenuItem) {
           correspondingMenuItem.click();
         }
       });
     });
+
+    // Desktop Header User Profile click handler
+    const profileWidget = document.querySelector('.user-profile-widget');
+    if (profileWidget) {
+      profileWidget.style.cursor = 'pointer';
+      profileWidget.addEventListener('click', () => {
+        showToast('PROFILE ROUTE', 'Opening Operator Profile configuration...');
+        setTimeout(() => {
+          window.location.href = '/personal-details.html';
+        }, 600);
+      });
+    }
 
     // Quick Actions Portal Cards Click Handler
     const quickActionCards = document.querySelectorAll('.quick-action-card');
@@ -444,7 +470,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchContainer = document.querySelector('.search-container');
     const searchIcon = document.querySelector('.search-icon');
     const searchInput = document.getElementById('global-search');
-    if (searchContainer && searchIcon) {
+    if (searchContainer && searchIcon && searchInput) {
       searchIcon.addEventListener('click', (e) => {
         // Only trigger expansion on mobile screens
         if (window.innerWidth <= 650) {
@@ -460,6 +486,277 @@ document.addEventListener('DOMContentLoaded', () => {
       document.addEventListener('click', (e) => {
         if (window.innerWidth <= 650 && searchContainer.classList.contains('expanded') && !searchContainer.contains(e.target)) {
           searchContainer.classList.remove('expanded');
+        }
+      });
+
+      // --- DYNAMIC SEARCH ENGINE DROPDOWN ---
+      const resultsDropdown = document.createElement('div');
+      resultsDropdown.id = 'global-search-results';
+      resultsDropdown.style.cssText = `
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        min-width: 22rem;
+        max-height: 24rem;
+        background: rgba(8, 14, 24, 0.98);
+        border: 1px solid var(--neon-cyan);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 15px rgba(0, 242, 254, 0.25);
+        border-radius: 4px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+        margin-top: 0.5rem;
+        font-family: var(--font-sans);
+      `;
+      searchContainer.appendChild(resultsDropdown);
+
+      const SEARCH_INDEX = [
+        {
+          category: "System Module",
+          title: "SOC Dashboard Overview",
+          subtitle: "Real-time security analytics, active logs, live map tracker, and system diagnostics.",
+          keywords: ["overview", "dashboard", "main", "home", "metrics", "analytics", "status", "map", "threats", "logs"],
+          target: "overview",
+          action: "switchView"
+        },
+        {
+          category: "System Module",
+          title: "About CyberShield SOC",
+          subtitle: "Security Operations Center protocols, architectural blueprint, and operational guides.",
+          keywords: ["about", "cybershield", "mission", "guide", "protocol", "architecture", "who", "info"],
+          target: "about",
+          action: "switchView"
+        },
+        {
+          category: "Cyber Tool",
+          title: "URL Safety Checker",
+          subtitle: "Analyze web URLs to identify phishing anchors, domain registration age, and SSL safety certificates.",
+          keywords: ["url", "link", "safety", "checker", "phishing", "domain", "ssl", "scan", "website"],
+          target: "url-checker",
+          action: "switchView"
+        },
+        {
+          category: "Cyber Tool",
+          title: "Email Spoofing Verifier",
+          subtitle: "Scan incoming emails and domains for SPF alignment, DKIM keys, and DMARC policies.",
+          keywords: ["email", "spoofing", "spf", "dkim", "dmarc", "header", "safety", "verifier", "mail"],
+          target: "email-checker",
+          action: "switchView"
+        },
+        {
+          category: "Cyber Tool",
+          title: "Steganography Learning Lab",
+          subtitle: "Securely encode confidential ciphertext messages into cover PNG images or extract hidden files.",
+          keywords: ["stego", "steganography", "steg", "hide", "image", "extract", "decode", "encode", "png", "secret"],
+          target: "stego-lab",
+          action: "switchView"
+        },
+        {
+          category: "Cyber Tool",
+          title: "Password Strength Analyzer",
+          subtitle: "Calculate password Shannon entropy, estimated cracking time frames, and dictionary-match safety.",
+          keywords: ["password", "strength", "analyzer", "entropy", "crack", "dictionary", "passphrase", "check"],
+          target: "password-checker",
+          action: "switchView"
+        },
+        {
+          category: "Cyber Tool",
+          title: "Interactive Security Quiz",
+          subtitle: "Test your cybersecurity compliance knowledge on authentication, social engineering, and protocol safe guidelines.",
+          keywords: ["quiz", "test", "exam", "questions", "score", "compliance", "hygiene", "knowledge"],
+          target: "quiz",
+          action: "switchView"
+        },
+        {
+          category: "Threat Log",
+          title: "Email Social Phishing Threat Log",
+          subtitle: "Malicious communication spoofing high-authority executives demanding quick password verification.",
+          keywords: ["phishing", "spoofing", "executive", "demanding", "social", "email", "malicious", "threat"],
+          target: "overview",
+          action: "switchView"
+        },
+        {
+          category: "Threat Log",
+          title: "Zero-Day Malware Threat Log",
+          subtitle: "Endpoint infiltrations via compromised links, embedding RAT tools or keyboard loggers silently.",
+          keywords: ["malware", "rat", "keylogger", "zero-day", "compromised", "threat", "log"],
+          target: "overview",
+          action: "switchView"
+        },
+        {
+          category: "Threat Log",
+          title: "Double-Extortion Ransomware Log",
+          subtitle: "Exfiltrates corporate databases then encrypts local partitions, threatening public leakage of secure data.",
+          keywords: ["ransomware", "extortion", "encrypt", "leakage", "data", "threat", "log"],
+          target: "overview",
+          action: "switchView"
+        },
+        {
+          category: "Threat Log",
+          title: "Volumetric DDoS Attack Log",
+          subtitle: "Floods public facing APIs and web gateways with garbage traffic from global hijacked botnets.",
+          keywords: ["ddos", "volumetric", "floods", "botnet", "traffic", "denial", "threat", "log"],
+          target: "overview",
+          action: "switchView"
+        },
+        {
+          category: "Compliance Report",
+          title: "Audit_Ledger_2026_Q2.pdf",
+          subtitle: "Quarterly security compliance audit ledger. Ready for download.",
+          keywords: ["report", "audit", "ledger", "download", "compliance", "pdf", "q2"],
+          target: "reports",
+          action: "switchView"
+        },
+        {
+          category: "Compliance Report",
+          title: "SecOps_Incident_Response_v1.2.pdf",
+          subtitle: "SecOps emergency response playbook and compliance structure. Ready for download.",
+          keywords: ["report", "incident", "response", "playbook", "download", "compliance", "pdf"],
+          target: "reports",
+          action: "switchView"
+        },
+        {
+          category: "News",
+          title: "Cyber Threat Intelligence Feed",
+          subtitle: "Live security bulletins, zero-day threat announcements, and emergency CVE patches.",
+          keywords: ["news", "threats", "feed", "articles", "bulletin", "cve", "zero-day", "securityweek", "hacker", "patch"],
+          target: "news",
+          action: "newsRedirect"
+        },
+        {
+          category: "Academy Path",
+          title: "Beginner Cybersecurity Practitioner",
+          subtitle: "Beginner level: Network basics, OSI model layers, essential Linux shell commands, and core credential hygiene.",
+          keywords: ["beginner", "practitioner", "network", "osi", "linux", "commands", "mfa", "hygiene"],
+          target: "learning",
+          action: "switchView"
+        },
+        {
+          category: "Academy Path",
+          title: "Intermediate Penetration Testing",
+          subtitle: "Intermediate level: Ethical hacking basics, cyber kill chain, network port scanning, SQLi, and XSS.",
+          keywords: ["intermediate", "pentest", "hacking", "scan", "port", "sqli", "xss", "csrf", "malware", "kill chain"],
+          target: "learning",
+          action: "switchView"
+        },
+        {
+          category: "Academy Path",
+          title: "Advanced Security Operations & Forensics",
+          subtitle: "Advanced level: OWASP Top 10 vulnerabilities, RSA/AES cryptography, and memory/disk logs forensics.",
+          keywords: ["advanced", "forensics", "owasp", "cryptography", "rsa", "aes", "memory", "disk", "logs", "analysis"],
+          target: "learning",
+          action: "switchView"
+        },
+        {
+          category: "Support",
+          title: "Help & Technical Support Desk",
+          subtitle: "Consult terminal documentation, operation guidelines, and system configuration resources.",
+          keywords: ["help", "support", "technical", "desk", "docs", "documentation", "guide", "faq", "ticket"],
+          target: "support",
+          action: "switchView"
+        },
+        {
+          category: "Feedback",
+          title: "Operational Feedback Console",
+          subtitle: "Submit system suggestions, report UI/utility bugs, or contact the core administration cluster.",
+          keywords: ["feedback", "form", "whatsapp", "contact", "bug", "report", "suggest", "opinion"],
+          target: "feedback",
+          action: "switchView"
+        },
+        {
+          category: "Settings",
+          title: "SOC Console Settings",
+          subtitle: "Manage account operator handles, toggle background parallax animations, and adjust alerts.",
+          keywords: ["settings", "config", "preferences", "handle", "parallax", "profile", "options"],
+          target: "settings",
+          action: "switchView"
+        }
+      ];
+
+      searchInput.addEventListener('input', () => {
+        const query = searchInput.value.trim().toLowerCase();
+        if (!query) {
+          resultsDropdown.style.display = 'none';
+          return;
+        }
+
+        const matches = SEARCH_INDEX.filter(item => {
+          return item.title.toLowerCase().includes(query) || 
+                 item.subtitle.toLowerCase().includes(query) || 
+                 item.category.toLowerCase().includes(query) ||
+                 item.keywords.some(k => k.includes(query));
+        });
+
+        resultsDropdown.innerHTML = '';
+        resultsDropdown.style.display = 'block';
+
+        if (matches.length === 0) {
+          const noResults = document.createElement('div');
+          noResults.style.cssText = 'padding: 1rem; color: var(--text-muted); text-align: center; font-size: 0.8rem;';
+          noResults.textContent = 'No matching results found.';
+          resultsDropdown.appendChild(noResults);
+          return;
+        }
+
+        matches.forEach(item => {
+          const row = document.createElement('div');
+          row.style.cssText = `
+            display: flex;
+            flex-direction: column;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            cursor: pointer;
+            transition: all 0.2s ease;
+          `;
+          
+          row.addEventListener('mouseenter', () => {
+            row.style.background = 'rgba(0, 242, 254, 0.08)';
+            row.style.borderLeft = '3px solid var(--neon-cyan)';
+          });
+          row.addEventListener('mouseleave', () => {
+            row.style.background = 'transparent';
+            row.style.borderLeft = 'none';
+          });
+
+          row.innerHTML = `
+            <div style="font-size: 0.65rem; color: var(--neon-cyan); font-family: var(--font-mono); text-transform: uppercase; margin-bottom: 0.15rem; letter-spacing: 0.5px;">${item.category}</div>
+            <div style="font-size: 0.85rem; font-weight: 700; color: #ffffff; margin-bottom: 0.15rem;">${item.title}</div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); line-height: 1.3;">${item.subtitle}</div>
+          `;
+
+          row.addEventListener('click', () => {
+            resultsDropdown.style.display = 'none';
+            searchInput.value = '';
+            
+            if (item.action === 'newsRedirect') {
+              showToast('SOC NAVIGATION ROUTE', 'Routing to Cyber News Intelligence Portal...');
+              document.body.classList.add('page-fade-out');
+              setTimeout(() => {
+                window.location.href = 'cyber-news.html';
+              }, 350);
+            } else if (item.action === 'switchView') {
+              const correspondingMenuItem = document.querySelector(`.menu-item[data-target="${item.target}"]`);
+              if (correspondingMenuItem) {
+                correspondingMenuItem.click();
+              }
+            }
+          });
+
+          resultsDropdown.appendChild(row);
+        });
+      });
+
+      // Close on click outside or escape key
+      document.addEventListener('click', (e) => {
+        if (!searchContainer.contains(e.target)) {
+          resultsDropdown.style.display = 'none';
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          resultsDropdown.style.display = 'none';
         }
       });
     }
@@ -1481,6 +1778,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (!trigger || !dropdown) return;
 
+    // Dynamically update the count of unread notifications
+    function updateBadgeCount() {
+      const unreadCount = document.querySelectorAll('.notif-item.unread').length;
+      const badge = document.querySelector('.bell-badge');
+      if (badge) {
+        if (unreadCount > 0) {
+          badge.textContent = unreadCount;
+          badge.style.display = 'flex';
+        } else {
+          badge.style.display = 'none';
+        }
+      }
+    }
+
+    // Initialize badge count on load
+    updateBadgeCount();
+
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();
       dropdown.classList.toggle('active');
@@ -1490,15 +1804,27 @@ document.addEventListener('DOMContentLoaded', () => {
       dropdown.classList.remove('active');
     });
 
+    // Handle clicking individual notification items to mark as read
+    const notifItems = document.querySelectorAll('.notif-item');
+    notifItems.forEach(item => {
+      item.style.cursor = 'pointer';
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (item.classList.contains('unread')) {
+          item.classList.remove('unread');
+          updateBadgeCount();
+          showToast('ALERT ACKNOWLEDGED', 'Incident status updated to verified.');
+        }
+      });
+    });
+
     if (clearBtn) {
       clearBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        const badge = document.querySelector('.bell-badge');
-        if (badge) badge.style.display = 'none';
-        
         document.querySelectorAll('.notif-item').forEach(item => {
           item.classList.remove('unread');
         });
+        updateBadgeCount();
         showToast('ALERTS ACKNOWLEDGED', 'All active threats reported as verified.');
         dropdown.classList.remove('active');
       });
@@ -1529,7 +1855,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     toastTitle.textContent = title;
-    toastDesc.textContent = desc;
+    toastDesc.innerHTML = desc;
 
     // Trigger redraw
     void toast.offsetWidth;
@@ -2018,43 +2344,7 @@ DigitalOcean Billing`
     });
   }
 
-  // --- 19. OPERATIONS COMMUNITY FORUM ---
-  function initCommunityForum() {
-    const form = document.getElementById('community-tip-form');
-    const container = document.getElementById('community-feed-container');
 
-    if (!form || !container) return;
-
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const title = document.getElementById('com-tip-title').value.trim();
-      const cat = document.getElementById('com-tip-cat').value;
-      const desc = document.getElementById('com-tip-desc').value.trim();
-
-      const newPost = document.createElement('div');
-      newPost.style.background = "rgba(0, 242, 255, 0.02)";
-      newPost.style.border = "1px solid rgba(0, 242, 255, 0.15)";
-      newPost.style.borderRadius = "8px";
-      newPost.style.padding = "0.75rem";
-      newPost.style.display = "flex";
-      newPost.style.flexDirection = "column";
-      newPost.style.gap = "0.25rem";
-      newPost.style.animation = "fadeInUp 0.4s ease-out";
-
-      newPost.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-size: 0.7rem; font-weight: 700; color: #ffffff;">${title} (${cat.toUpperCase()})</span>
-          <span style="font-size: 0.58rem; color: var(--neon-cyan); font-family: var(--font-mono);">by Agent (You) • Just now</span>
-        </div>
-        <p style="font-size: 0.68rem; color: var(--text-muted); margin: 0;">${desc}</p>
-      `;
-
-      container.insertBefore(newPost, container.firstChild);
-      showToast('POST COMMITTED', 'Secure operations tip added successfully.');
-      form.reset();
-    });
-  }
 
   // --- 20. INCIDENT SUPPORT CONSOLE ---
   function initSupportConsole() {
@@ -2101,12 +2391,63 @@ DigitalOcean Billing`
 
     form.addEventListener('submit', (e) => {
       e.preventDefault();
+      
+      const commentInput = document.getElementById('feedback-comment');
+      const comment = commentInput ? commentInput.value.trim() : '';
+
       if (ratingVal === 0) {
-        showToast('OPERATION REJECTED', 'Please select a star rating first.', true);
+        showToast('OPERATION REJECTED', 'Please select a security rating star score first.', true);
         return;
       }
 
-      showToast('TELEMETRY RECOGNIZED', `Feedback registered with ${ratingVal}-Star evaluation score.`);
+      if (!comment) {
+        showToast('OPERATION REJECTED', 'Operational notes / feedback comment cannot be empty.', true);
+        return;
+      }
+
+      // 3. Resolve Operator profile details
+      let userName = 'Agent Alice';
+      let userEmail = 'alice@cybershield.com';
+
+      // Load from LocalStorage if user updated it
+      const storedProfile = localStorage.getItem('operatorProfile');
+      if (storedProfile) {
+        try {
+          const profile = JSON.parse(storedProfile);
+          if (profile.name) userName = profile.name;
+        } catch (pe) {
+          console.error("Parse storedProfile failed:", pe);
+        }
+      }
+
+      // Check if we have active user session
+      if (window.currentUserSession) {
+        if (window.currentUserSession.username) userName = window.currentUserSession.username;
+        if (window.currentUserSession.email) userEmail = window.currentUserSession.email;
+      }
+
+      const timestamp = new Date().toLocaleString();
+      const feedbackText = `Rating: ${ratingVal}/5 stars - ${comment}`;
+
+      const messageContent = `Cyber Shield Feedback
+
+Name: ${userName}
+Email: ${userEmail}
+Feedback: ${feedbackText}
+Date & Time: ${timestamp}`;
+
+      const encodedMsg = encodeURIComponent(messageContent);
+      const primaryUrl = `https://wa.me/919080746103?text=${encodedMsg}`;
+      const backupUrl = `https://wa.me/916384688085?text=${encodedMsg}`;
+
+      // Open primary channel in a new tab
+      const newWin = window.open(primaryUrl, '_blank');
+      if (!newWin || newWin.closed || typeof newWin.closed === 'undefined') {
+        showToast('POPUP BLOCKER DETECTED', 'Browser blocked WhatsApp popup. Please enable popups or use backup link.', true);
+      }
+
+      showToast('TELEMETRY COMMITTED', `Feedback submitted! Opened primary line (+919080746103). If loading fails, click <a href="${backupUrl}" target="_blank" style="color: var(--neon-cyan); text-decoration: underline; font-weight: 700;">HERE</a> for backup line.`);
+      
       form.reset();
       
       // Reset stars

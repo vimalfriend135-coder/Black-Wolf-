@@ -6,7 +6,8 @@ import {
   signInWithPopup, 
   GoogleAuthProvider, 
   GithubAuthProvider,
-  onAuthStateChanged 
+  onAuthStateChanged,
+  updateProfile
 } from "./firebase-init.js";
 
 /**
@@ -166,20 +167,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- CHECK EXISTING SESSION ON LAUNCH ---
-  async function checkExistingSession() {
-    try {
-      const response = await fetch('/api/auth/me');
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          window.location.href = '/dashboard.html';
-        }
-      }
-    } catch (err) {
-      console.log('No active session found:', err);
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      window.location.href = '/dashboard.html';
     }
-  }
-  checkExistingSession();
+  });
 
   // --- PASSWORD RESET LINK ---
   const forgotPasswordTrigger = document.getElementById('forgot-password-trigger');
@@ -228,36 +220,17 @@ document.addEventListener('DOMContentLoaded', () => {
           const userCredential = await createUserWithEmailAndPassword(auth, email, password);
           const firebaseUser = userCredential.user;
 
-          // Sync session with Backend Node
-          loginSubmitBtn.querySelector('.btn-text').textContent = 'ESTABLISHING LOCAL REGISTRY...';
-          const sessionResponse = await fetch('/api/auth/firebase-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: firebaseUser.email,
-              username: username,
-              provider: 'password',
-              providerId: firebaseUser.uid
-            })
-          });
-
-          const sessionResult = await sessionResponse.json();
+          // Update display name
+          await updateProfile(firebaseUser, { displayName: username });
 
           loginSubmitBtn.classList.remove('loading');
           loginSubmitBtn.disabled = false;
           loginSubmitBtn.querySelector('.btn-text').textContent = originalText;
 
-          if (sessionResult.success) {
-            showToast('CLEARANCE CONFIRMED', 'Operational identity created! Initializing console link...');
-            // Automatically switch to login mode and pre-populate email
-            setTimeout(() => {
-              if (authModeToggle) authModeToggle.click();
-              emailInput.value = email;
-              passwordInput.value = '';
-            }, 2000);
-          } else {
-            showToast('LOCAL REGISTRY ERROR', sessionResult.error || 'Failed to sync with local database.', true);
-          }
+          showToast('CLEARANCE CONFIRMED', 'Operational identity created! Initializing console link...');
+          setTimeout(() => {
+            window.location.href = '/personal-details.html';
+          }, 2000);
         } catch (error) {
           loginSubmitBtn.classList.remove('loading');
           loginSubmitBtn.disabled = false;
@@ -280,42 +253,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
           // Authenticate with Firebase
-          const userCredential = await signInWithEmailAndPassword(auth, email, password);
-          const firebaseUser = userCredential.user;
-
-          loginSubmitBtn.querySelector('.btn-text').textContent = 'VERIFYING TOKEN SIGNATURES...';
-
-          // Sync session with Backend Node
-          const sessionResponse = await fetch('/api/auth/firebase-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: firebaseUser.email,
-              username: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-              provider: 'password',
-              providerId: firebaseUser.uid
-            })
-          });
-
-          const sessionResult = await sessionResponse.json();
+          await signInWithEmailAndPassword(auth, email, password);
 
           loginSubmitBtn.classList.remove('loading');
           loginSubmitBtn.disabled = false;
           loginSubmitBtn.querySelector('.btn-text').textContent = originalText;
 
-          if (sessionResult.success) {
-            showToast(
-              'AUTHORIZATION CONFIRMED', 
-              'Token signature verified. Redirecting to CyberShield Hub...'
-            );
-            
-            // Redirect to personal details page
-            setTimeout(() => {
-              window.location.href = '/personal-details.html';
-            }, 1500);
-          } else {
-            showToast('LOCAL SESSION DENIED', sessionResult.error || 'Failed to establish local console link.', true);
-          }
+          showToast(
+            'AUTHORIZATION CONFIRMED', 
+            'Token signature verified. Redirecting to CyberShield Hub...'
+          );
+          
+          // Redirect to personal details page
+          setTimeout(() => {
+            window.location.href = '/personal-details.html';
+          }, 1500);
         } catch (error) {
           loginSubmitBtn.classList.remove('loading');
           loginSubmitBtn.disabled = false;
@@ -341,37 +293,16 @@ document.addEventListener('DOMContentLoaded', () => {
         provider = new GithubAuthProvider();
       }
 
-      const result = await signInWithPopup(auth, provider);
-      const firebaseUser = result.user;
+      await signInWithPopup(auth, provider);
 
-      showToast('AUTHENTICATION CONFIRMED', 'Cryptographic single sign-on verification succeeded. Syncing session...');
-
-      // Sync session with Backend Node
-      const sessionResponse = await fetch('/api/auth/firebase-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: firebaseUser.email || `${firebaseUser.uid}@github-node.com`,
-          username: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || `agent_${firebaseUser.uid.substring(0, 5)}`,
-          provider: providerName,
-          providerId: firebaseUser.uid
-        })
-      });
-
-      const sessionResult = await sessionResponse.json();
-
-      if (sessionResult.success) {
-        showToast(
-          'AUTHORIZATION CONFIRMED',
-          'Symmetric terminal link established. Access granted to CyberShield Hub...'
-        );
-        
-        setTimeout(() => {
-          window.location.href = '/personal-details.html';
-        }, 1500);
-      } else {
-        showToast('SESSION NODE ERROR', sessionResult.error || 'Failed to register cryptographic credentials.', true);
-      }
+      showToast(
+        'AUTHORIZATION CONFIRMED',
+        'Symmetric terminal link established. Access granted to CyberShield Hub...'
+      );
+      
+      setTimeout(() => {
+        window.location.href = '/personal-details.html';
+      }, 1500);
     } catch (err) {
       console.error(`${providerName} SSO error:`, err);
       showToast('OAUTH GATEWAY ERROR', err.message || `Could not establish trust route with ${providerName}.`, true);

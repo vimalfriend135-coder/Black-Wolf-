@@ -1,3 +1,5 @@
+import { auth, onAuthStateChanged } from "./firebase-init.js";
+
 /**
  * CyberShield Awareness - Personal Details Setup Logic
  * Manages operator configuration, clearance preview, and matrix-particle background.
@@ -104,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // --- LOAD PROFILE OR PREFILL FROM ME ROUTE ---
-  async function loadProfileData() {
+  async function loadProfileData(user) {
     try {
       // 1. Try to load from LocalStorage first
       const stored = localStorage.getItem('operatorProfile');
@@ -120,18 +122,42 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // 2. Otherwise load from user session
-      const res = await fetch('/api/auth/me');
-      const data = await res.json();
-      if (data.success && data.user) {
-        nameInput.value = data.user.username.replace(/_/g, ' ') || '';
-        codenameInput.value = `AGENT_${data.user.username.toUpperCase()}`;
+      if (user) {
+        const username = user.displayName || user.email.split('@')[0];
+        nameInput.value = username.replace(/_/g, ' ') || '';
+        codenameInput.value = `AGENT_${username.toUpperCase()}`;
         updateBadge();
+        return;
       }
+
+      // Fallback: Display demo profile if not authenticated and no stored profile
+      nameInput.value = 'Agent Alice';
+      codenameInput.value = 'AGENT_ALICE';
+      deptSelect.value = 'SOC Operations Center';
+      clearanceSelect.value = 'LEVEL_2_SPECIALIST';
+      nodeSelect.value = 'LND-SOC-09 (London)';
+      updateBadge();
     } catch (e) {
       console.error('Failed to load prefill data:', e);
+      // Fallback: Display demo profile on error
+      nameInput.value = 'Agent Alice';
+      codenameInput.value = 'AGENT_ALICE';
+      deptSelect.value = 'SOC Operations Center';
+      clearanceSelect.value = 'LEVEL_2_SPECIALIST';
+      nodeSelect.value = 'LND-SOC-09 (London)';
+      updateBadge();
     }
   }
-  loadProfileData();
+
+  // Enforce session check on launch
+  onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      console.log("No active Firebase session. Redirecting to login page.");
+      window.location.href = '/';
+      return;
+    }
+    loadProfileData(user);
+  });
 
   // --- SUBMIT / COMMIT PROFILE ---
   if (form) {
