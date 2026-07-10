@@ -1,0 +1,482 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CyberShield Awareness - Personal operator details</title>
+    <meta name="description" content="Configure your cyber security operator credentials and clearance details." />
+    <!-- Preload background and fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="/css/login.css">
+    <style>
+      /* Custom supplementary style rules for Personal Details Layout */
+      .details-main-panel {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        width: 100%;
+        max-width: 1100px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+        z-index: 10;
+        align-items: center;
+      }
+
+      @media (min-width: 768px) {
+        .details-main-panel {
+          grid-template-columns: 1.2fr 1fr;
+          gap: 3.5rem;
+        }
+      }
+
+      /* Cyber ID Badge card styling */
+      .badge-preview-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        perspective: 1000px;
+      }
+
+      .cyber-badge {
+        width: 100%;
+        max-width: 360px;
+        background: linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(10, 15, 25, 0.95) 100%);
+        border: 2px solid var(--neon-cyan);
+        box-shadow: 0 0 25px rgba(0, 242, 255, 0.15);
+        border-radius: 16px;
+        padding: 1.75rem;
+        position: relative;
+        overflow: hidden;
+        font-family: var(--font-mono);
+        color: var(--text-secondary);
+        transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s;
+      }
+
+      .cyber-badge::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: linear-gradient(45deg, transparent, rgba(0, 242, 255, 0.05), transparent);
+        transform: rotate(45deg);
+        animation: badge-shine 6s infinite linear;
+        pointer-events: none;
+      }
+
+      @keyframes badge-shine {
+        0% { transform: translate(-30%, -30%) rotate(45deg); }
+        100% { transform: translate(30%, 30%) rotate(45deg); }
+      }
+
+      .badge-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 2px dashed rgba(0, 242, 255, 0.25);
+        padding-bottom: 1rem;
+        margin-bottom: 1.25rem;
+      }
+
+      .badge-title-box {
+        text-align: left;
+      }
+
+      .badge-org {
+        font-size: 0.65rem;
+        color: var(--text-muted);
+        letter-spacing: 2px;
+        text-transform: uppercase;
+      }
+
+      .badge-type {
+        font-family: var(--font-display);
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #ffffff;
+        letter-spacing: 0.5px;
+      }
+
+      .badge-logo {
+        width: 40px;
+        height: 40px;
+        border: 1px solid var(--neon-cyan);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display);
+        font-weight: 900;
+        color: var(--neon-cyan);
+        background: rgba(0, 242, 255, 0.05);
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 242, 255, 0.2);
+      }
+
+      .badge-body {
+        display: grid;
+        grid-template-columns: 80px 1fr;
+        gap: 1.25rem;
+        align-items: start;
+      }
+
+      .badge-photo-frame {
+        width: 80px;
+        height: 100px;
+        border: 1px solid rgba(0, 242, 255, 0.3);
+        background: rgba(15, 23, 42, 0.8);
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: inset 0 0 15px rgba(0, 242, 255, 0.1);
+      }
+
+      .badge-avatar-svg {
+        width: 50px;
+        height: 50px;
+        color: var(--neon-cyan);
+        opacity: 0.6;
+        filter: drop-shadow(0 0 5px rgba(0, 242, 255, 0.3));
+      }
+
+      .scan-line-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(to bottom, transparent 95%, rgba(0, 242, 255, 0.4) 100%);
+        background-size: 100% 20px;
+        animation: avatar-scan 2.5s infinite linear;
+        pointer-events: none;
+      }
+
+      @keyframes avatar-scan {
+        0% { transform: translateY(-100px); }
+        100% { transform: translateY(100px); }
+      }
+
+      .badge-details {
+        text-align: left;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .badge-field {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .badge-label {
+        font-size: 0.55rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .badge-val {
+        font-size: 0.78rem;
+        font-weight: 500;
+        color: var(--text-secondary);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .badge-val.neon-highlight {
+        color: var(--neon-cyan);
+        text-shadow: 0 0 5px rgba(0, 242, 255, 0.3);
+      }
+
+      .badge-footer {
+        margin-top: 1.25rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        padding-top: 0.75rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.6rem;
+        color: var(--text-muted);
+      }
+
+      .barcode-mock {
+        height: 20px;
+        width: 90px;
+        background: repeating-linear-gradient(90deg, #64748b, #64748b 1px, transparent 1px, transparent 3px, #e2e8f0 3px, #e2e8f0 4px, transparent 4px, transparent 6px);
+        opacity: 0.45;
+      }
+
+      /* Dropdown selection customization */
+      .form-select {
+        width: 100%;
+        background-color: rgba(15, 23, 42, 0.5);
+        border: 1px solid var(--border-glass);
+        border-radius: 8px;
+        color: var(--text-secondary);
+        padding: 0.8rem 1rem;
+        font-family: var(--font-sans);
+        font-size: 0.88rem;
+        transition: var(--transition-fast);
+        outline: none;
+        appearance: none;
+        cursor: pointer;
+      }
+
+      .form-select:focus {
+        border-color: var(--border-neon-cyan);
+        box-shadow: 0 0 10px var(--neon-cyan-glow);
+        background-color: rgba(15, 23, 42, 0.8);
+      }
+
+      .form-select option {
+        background-color: #0b0f19;
+        color: var(--text-secondary);
+      }
+
+      .select-container {
+        position: relative;
+        width: 100%;
+      }
+
+      .select-arrow {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        pointer-events: none;
+        color: var(--text-muted);
+        width: 16px;
+        height: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Background visual layers -->
+    <div class="soc-bg-image"></div>
+    <div class="soc-overlay"></div>
+    
+    <!-- Ambient color lights -->
+    <div class="glow-node glow-node-1"></div>
+    <div class="glow-node glow-node-2"></div>
+    <div class="glow-node glow-node-3"></div>
+
+    <!-- Active background canvases -->
+    <canvas id="background-canvas"></canvas>
+    <canvas id="matrix-canvas"></canvas>
+
+    <!-- Page wrapper -->
+    <div class="page-wrapper" style="min-height: 100vh; display: flex; flex-direction: column; justify-content: space-between;">
+      
+      <!-- Brand Header -->
+      <header class="header-container" style="z-index: 10;">
+        <div class="header-left">
+          <div class="logo-wrapper">
+            <div class="logo-icon-box">
+              <span class="logo-icon-text">CS</span>
+            </div>
+            <h1 class="logo-text">Cyber<span>Shield</span></h1>
+          </div>
+          <p class="tagline">Security Operations Center // Operator Provisioning</p>
+        </div>
+
+        <div class="header-right">
+          <div class="status-indicator">
+            <span class="status-dot"></span>
+            <span class="status-label">Identity Authenticated</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main details layout -->
+      <main class="details-main-panel">
+        
+        <!-- Left: Form for configuring credentials -->
+        <section class="login-card" style="width: 100%; max-width: 520px; margin: 0 auto; padding: 2rem;">
+          <div class="card-header" style="margin-bottom: 1.5rem;">
+            <h2 class="card-title" style="font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: #ffffff;">Operator Profile setup</h2>
+            <p class="card-subtitle" style="font-size: 0.85rem; color: var(--text-muted);">Please configure your terminal operator details to sync clearance files</p>
+          </div>
+
+          <form id="operator-details-form">
+            <!-- Full Name Input -->
+            <div class="form-group">
+              <div class="input-label-wrapper">
+                <label for="operator-name-input" class="input-label">Operator Full Name</label>
+              </div>
+              <div class="input-container">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                <input 
+                  type="text" 
+                  id="operator-name-input" 
+                  class="form-input" 
+                  placeholder="e.g. Samantha Vance" 
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Operator Code Name -->
+            <div class="form-group">
+              <div class="input-label-wrapper">
+                <label for="operator-codename-input" class="input-label">Operator Code Name / Callsign</label>
+              </div>
+              <div class="input-container">
+                <svg class="input-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+                  <path d="M12 2a10 10 0 0 1 10 10H12V2z" opacity="0.2"/>
+                  <path d="M12 12L22 12"/>
+                  <path d="M12 12V22"/>
+                </svg>
+                <input 
+                  type="text" 
+                  id="operator-codename-input" 
+                  class="form-input" 
+                  placeholder="e.g. AGENT_VANCE" 
+                  required
+                />
+              </div>
+            </div>
+
+            <!-- Department dropdown selection -->
+            <div class="form-group">
+              <div class="input-label-wrapper">
+                <label for="operator-dept-select" class="input-label">Assigned SOC Department</label>
+              </div>
+              <div class="select-container">
+                <select id="operator-dept-select" class="form-select">
+                  <option value="Threat Intelligence Group">Threat Intelligence Group</option>
+                  <option value="Security Incident Response">Security Incident Response</option>
+                  <option value="SOC Operations Center" selected>SOC Operations Center</option>
+                  <option value="Cryptographic Forensic Wing">Cryptographic Forensic Wing</option>
+                </select>
+                <svg class="select-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Clearance Level dropdown selection -->
+            <div class="form-group">
+              <div class="input-label-wrapper">
+                <label for="operator-clearance-select" class="input-label">Security Clearance Clearance</label>
+              </div>
+              <div class="select-container">
+                <select id="operator-clearance-select" class="form-select">
+                  <option value="LEVEL_1_OPERATOR">Level 1 - Public Console Access</option>
+                  <option value="LEVEL_2_SPECIALIST" selected>Level 2 - Restricted File Clearance</option>
+                  <option value="LEVEL_3_ANALYST">Level 3 - Secret Incident Log Access</option>
+                  <option value="LEVEL_4_ADMIN">Level 4 - Top Secret Global Root Control</option>
+                </select>
+                <svg class="select-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Preferred Node Location -->
+            <div class="form-group">
+              <div class="input-label-wrapper">
+                <label for="operator-node-select" class="input-label">Preferred SOC Node Location</label>
+              </div>
+              <div class="select-container">
+                <select id="operator-node-select" class="form-select">
+                  <option value="LND-SOC-09 (London)">LND-SOC-09 (London)</option>
+                  <option value="SGP-SOC-03 (Singapore)">SGP-SOC-03 (Singapore)</option>
+                  <option value="NYC-SOC-12 (New York)">NYC-SOC-12 (New York)</option>
+                  <option value="TKY-SOC-07 (Tokyo)">TKY-SOC-07 (Tokyo)</option>
+                </select>
+                <svg class="select-arrow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </div>
+            </div>
+
+            <!-- Commit Button -->
+            <button type="submit" class="btn-primary" id="commit-operator-btn" style="width: 100%; margin-top: 1rem;">
+              <span class="btn-glow"></span>
+              <span class="btn-text">COMMIT IDENTITY CREDENTIALS</span>
+            </button>
+          </form>
+        </section>
+
+        <!-- Right: Interactive Operator Badge Preview -->
+        <section class="badge-preview-container">
+          <div style="margin-bottom: 1.5rem; text-align: center;">
+            <p style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--neon-cyan); letter-spacing: 1.5px;">LIVE CREDENTIAL GENERATOR</p>
+          </div>
+          
+          <div class="cyber-badge" id="operator-badge">
+            <div class="badge-header">
+              <div class="badge-title-box">
+                <div class="badge-org">CyberShield Hub</div>
+                <div class="badge-type">IDENTITY CLEARANCE</div>
+              </div>
+              <div class="badge-logo">CS</div>
+            </div>
+            
+            <div class="badge-body">
+              <div class="badge-photo-frame">
+                <svg class="badge-avatar-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+                <div class="scan-line-overlay"></div>
+              </div>
+              
+              <div class="badge-details">
+                <div class="badge-field">
+                  <span class="badge-label">Operator</span>
+                  <span class="badge-val text-white" id="badge-name-val" style="color: #ffffff; font-weight: bold;">--</span>
+                </div>
+                <div class="badge-field">
+                  <span class="badge-label">Callsign</span>
+                  <span class="badge-val neon-highlight" id="badge-callsign-val">--</span>
+                </div>
+                <div class="badge-field">
+                  <span class="badge-label">Department</span>
+                  <span class="badge-val" id="badge-dept-val">--</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="badge-footer">
+              <div class="badge-field" style="align-items: flex-start;">
+                <span class="badge-label" id="badge-clearance-label">CLEARANCE LEVEL</span>
+                <span class="badge-val" id="badge-clearance-val" style="color: var(--neon-green);">--</span>
+              </div>
+              <div class="barcode-mock"></div>
+            </div>
+          </div>
+          
+          <div style="margin-top: 1.5rem; text-align: center; max-width: 340px;">
+            <p style="font-size: 0.75rem; color: var(--text-muted); line-height: 1.5;">This visual identity credential card will compile into your dynamic, authenticated security profile terminal context.</p>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- Toast Alerts Container -->
+      <div id="toast-container" class="toast-container"></div>
+
+      <!-- Footer Branding -->
+      <footer style="padding: 1.5rem; text-align: center; z-index: 10;">
+        <p style="font-family: var(--font-mono); font-size: 0.7rem; color: var(--text-muted);">
+          &copy; 2026 CYBERSHIELD NETWORKS. INTERNAL USE ONLY // PROPRIETARY AES CRYPTO ENGINE.
+        </p>
+      </footer>
+
+    </div>
+
+    <!-- Background script logic -->
+    <script type="module" src="/js/personal-details.js"></script>
+  </body>
+</html>
