@@ -775,11 +775,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (e) {
       console.error('Firebase sign out error:', e);
     }
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (e) {
-      console.error('Logout error:', e);
-    }
     setTimeout(() => {
       window.location.href = '/index.html';
     }, 1200);

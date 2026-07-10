@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import cors from "cors";
 import Parser from "rss-parser";
 import { createServer as createViteServer } from "vite";
@@ -258,6 +259,21 @@ app.use(cookieParser());
 
 // Password Security Analyzer API Router
 app.use("/api/password", passwordRoutes);
+
+// Firebase Config API Endpoint
+app.get("/api/firebase-config", (req, res) => {
+  try {
+    const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      const configData = fs.readFileSync(configPath, "utf8");
+      res.json(JSON.parse(configData));
+    } else {
+      res.status(404).json({ error: "Firebase config not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: "Failed to read Firebase config" });
+  }
+});
 
 // --- SECURE CHAT END-TO-END CRYPTOGRAPHIC BACKEND SYSTEM ---
 

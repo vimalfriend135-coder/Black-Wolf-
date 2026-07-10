@@ -305,7 +305,33 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 1500);
     } catch (err) {
       console.error(`${providerName} SSO error:`, err);
-      showToast('OAUTH GATEWAY ERROR', err.message || `Could not establish trust route with ${providerName}.`, true);
+      
+      if (err.code === 'auth/unauthorized-domain' || (err.message && err.message.includes('unauthorized-domain'))) {
+        const hostname = window.location.hostname;
+        const projectId = "ai-studio-blackwolf-91068aac-eec3-4793-a59f-b45cf122b28d";
+        const consoleUrl = `https://console.firebase.google.com/project/${projectId}/authentication/providers`;
+        
+        showToast(
+          'UNAUTHORIZED DOMAIN ERROR',
+          `This domain (<strong>${hostname}</strong>) is not authorized in your Firebase Project.<br/><br/>` +
+          `<strong>To fix this:</strong><br/>` +
+          `1. Open <a href="${consoleUrl}" target="_blank" style="color: var(--neon-cyan); text-decoration: underline; font-weight: 700;">Firebase Settings Console</a><br/>` +
+          `2. Under <strong>Authorized domains</strong>, click <strong>Add domain</strong><br/>` +
+          `3. Paste: <code style="background: rgba(255,255,255,0.15); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--neon-cyan); color: #fff; font-family: monospace; font-size: 11px;">${hostname}</code><br/>` +
+          `4. Save and refresh this page.`,
+          true,
+          45000
+        );
+      } else if (err.code === 'auth/popup-blocked') {
+        showToast(
+          'POPUP BLOCKER DETECTED',
+          'Your browser blocked the SSO authorization popup window. Please enable popups for this site and try again.',
+          true,
+          8000
+        );
+      } else {
+        showToast('OAUTH GATEWAY ERROR', err.message || `Could not establish trust route with ${providerName}.`, true);
+      }
     }
   }
 
@@ -328,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --- TOAST CONTROLLER ---
   let toastTimeout;
-  function showToast(title, description, isError = false) {
+  function showToast(title, description, isError = false, durationMs = 5000) {
     // Reset existing toast
     clearTimeout(toastTimeout);
     toastNotification.classList.remove('active', 'error');
@@ -338,7 +364,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Apply new values
     toastTitle.textContent = title;
-    toastDesc.textContent = description;
+    toastDesc.innerHTML = description;
     
     if (isError) {
       toastNotification.classList.add('error');
@@ -346,10 +372,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     toastNotification.classList.add('active');
 
-    // Auto-hide after 5 seconds
+    // Auto-hide after specified duration
     toastTimeout = setTimeout(() => {
       toastNotification.classList.remove('active');
-    }, 5000);
+    }, durationMs);
   }
 
   // --- MOUSE PARALLAX EFFECT ---
